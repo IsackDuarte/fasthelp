@@ -327,14 +327,32 @@ body.dark .btn-close {
 
     <x-side.menu />
 
-    <main class="main-content">
+<main class="main-content">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="h2 highlight-gradient">Dashboard</h1>
-<button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#modalCriarChamado">
-    <i class="bi bi-plus-circle-fill me-2"></i>Novo Chamado
-</button>
+            <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#modalCriarChamado">
+                <i class="bi bi-plus-circle-fill me-2"></i>Novo Chamado
+            </button>
         </div>
 
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Opa!</strong> Ocorreram alguns erros:
+                <ul>
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
         <div class="row g-4 mb-4">
             <div class="col-lg-4 col-md-6">
                 <div class="card">
@@ -342,7 +360,7 @@ body.dark .btn-close {
                         <div class="display-4 me-3"><i class="bi bi-journal-check"></i></div>
                         <div>
                             <h5 class="card-title-custom">Chamados Abertos</h5>
-                            <p class="card-text-custom mb-0">12</p>
+                            <p class="card-text-custom mb-0">{{ $totalAbertos }}</p>
                         </div>
                     </div>
                 </div>
@@ -353,7 +371,7 @@ body.dark .btn-close {
                         <div class="display-4 me-3"><i class="bi bi-hdd-stack"></i></div>
                         <div>
                             <h5 class="card-title-custom">Ativos Monitorados</h5>
-                            <p class="card-text-custom mb-0">354</p>
+                            <p class="card-text-custom mb-0">{{ $totalAtivos }}</p>
                         </div>
                     </div>
                 </div>
@@ -364,7 +382,7 @@ body.dark .btn-close {
                         <div class="display-4 me-3"><i class="bi bi-people"></i></div>
                         <div>
                             <h5 class="card-title-custom">Usuários Ativos</h5>
-                            <p class="card-text-custom mb-0">89</p>
+                            <p class="card-text-custom mb-0">{{ $totalUsuarios }}</p>
                         </div>
                     </div>
                 </div>
@@ -388,33 +406,117 @@ body.dark .btn-close {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td class="ps-4 fw-bold">#1024</td>
-                                <td>Computador não liga</td>
-                                <td><span class="badge bg-danger rounded-pill">Urgente</span></td>
-                                <td>Maria Silva</td>
-                                <td class="pe-4"><a href="#" class="btn btn-sm btn-outline-secondary">Ver</a></td>
-                            </tr>
-                            <tr>
-                                <td class="ps-4 fw-bold">#1023</td>
-                                <td>Problema com impressora</td>
-                                <td><span class="badge bg-warning text-dark rounded-pill">Em Andamento</span></td>
-                                <td>João Pereira</td>
-                                <td class="pe-4"><a href="#" class="btn btn-sm btn-outline-secondary">Ver</a></td>
-                            </tr>
-                            <tr>
-                                <td class="ps-4 fw-bold">#1022</td>
-                                <td>Instalação de software</td>
-                                <td><span class="badge bg-success rounded-pill">Concluído</span></td>
-                                <td>Ana Costa</td>
-                                <td class="pe-4"><a href="#" class="btn btn-sm btn-outline-secondary">Ver</a></td>
-                            </tr>
+                            @forelse ($chamados as $chamado)
+                                <tr>
+                                    <td class="ps-4 fw-bold">#{{ $chamado->id }}</td>
+                                    <td>{{ $chamado->assunto }}</td>
+                                    <td>
+                                        @if ($chamado->status == 'concluido')
+                                            <span class="badge bg-success rounded-pill">Concluído</span>
+                                        @elseif ($chamado->status == 'em_andamento')
+                                            <span class="badge bg-warning text-dark rounded-pill">Em Andamento</span>
+                                        @else
+                                            <span class="badge bg-danger rounded-pill">Aberto</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $chamado->user->name ?? 'N/A' }}</td>
+                                    <td class="pe-4">
+                                        <a href="{{ route('chamados.show', $chamado->id) }}" 
+                                           class="btn btn-sm btn-outline-secondary" 
+                                           data-bs-toggle="tooltip" title="Ver Detalhes">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </a>
+                                        <a href="{{ route('chamados.edit', $chamado->id) }}" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           data-bs-toggle="tooltip" title="Editar">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </a>
+                                        <form action="{{ route('chamados.destroy', $chamado->id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    class="btn btn-sm btn-outline-danger" 
+                                                    data-bs-toggle="tooltip" title="Excluir"
+                                                    onclick="return confirm('Tem certeza que deseja excluir o chamado #{{ $chamado->id }}?')">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center p-4">
+                                        Nenhum chamado encontrado.
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ... (todo o seu JS) ...
+            
+            // Inicialização dos Tooltips (MUITO IMPORTANTE para os botões de ação)
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            const tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // ... (resto do seu JS) ...
+        });
+    </script>
+
+    <div class="modal fade" id="modalCriarChamado" tabindex="-1" aria-labelledby="modalCriarChamadoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCriarChamadoLabel">Criar Novo Chamado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <form id="formCriarChamado" action="{{ route('chamados.store') }}" method="POST">
+                    @csrf <div class="modal-body">
+                        
+                        <div class="mb-3">
+                            <label for="chamadoAssunto" class="form-label">Assunto</label>
+                            <input type="text" class="form-control" id="chamadoAssunto" name="assunto" 
+                                   placeholder="Ex: Computador não liga" required value="{{ old('assunto') }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="chamadoCategoria" class="form-label">Categoria</label>
+                            <select class="form-select" id="chamadoCategoria" name="categoria" required>
+                                <option selected disabled value="">Selecione uma categoria...</option>
+                                <option value="hardware" @if(old('categoria') == 'hardware') selected @endif>Hardware</option>
+                                <option value="software" @if(old('categoria') == 'software') selected @endif>Software</option>
+                                <option value="rede" @if(old('categoria') == 'rede') selected @endif>Rede</option>
+                                <option value="impressora" @if(old('categoria') == 'impressora') selected @endif>Impressora</option>
+                                <option value="outro" @if(old('categoria') == 'outro') selected @endif>Outro</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="chamadoDescricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="chamadoDescricao" name="descricao" rows="4" 
+                                      placeholder="Descreva o problema com o máximo de detalhes possível...">{{ old('descricao') }}</textarea>
+                        </div>
+                        
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-brand">Criar Chamado</button>
+                    </div>
+                </form>
+                 </div>
+        </div>
+    </div>
+</body>
+</html>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -497,40 +599,52 @@ body.dark .btn-close {
         });
     </script>
 
-    <div class="modal fade" id="modalCriarChamado" tabindex="-1" aria-labelledby="modalCriarChamadoLabel" aria-hidden="true">
+<div class="modal fade" id="modalCriarChamado" tabindex="-1" aria-labelledby="modalCriarChamadoLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalCriarChamadoLabel">Criar Novo Chamado</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="formCriarChamado">
+            <div class="modal-header"><h5 class="modal-title" id="modalCriarChamadoLabel">Criar Novo Chamado</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            
+            <form id="formCriarChamado" action="{{ route('chamados.store') }}" method="POST">
+                @csrf 
+                <div class="modal-body">
+                    
                     <div class="mb-3">
                         <label for="chamadoAssunto" class="form-label">Assunto</label>
-                        <input type="text" class="form-control" id="chamadoAssunto" placeholder="Ex: Computador não liga" required>
+                        <input type="text" class="form-control" id="chamadoAssunto" name="assunto" placeholder="Ex: Computador não liga" required value="{{ old('assunto') }}">
                     </div>
-                    <div class="mb-3">
-                        <label for="chamadoCategoria" class="form-label">Categoria</label>
-                        <select class="form-select" id="chamadoCategoria" required>
-                            <option selected disabled value="">Selecione uma categoria...</option>
-                            <option value="hardware">Hardware</option>
-                            <option value="software">Software</option>
-                            <option value="rede">Rede</option>
-                            <option value="impressora">Impressora</option>
-                            <option value="outro">Outro</option>
-                        </select>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="chamadoCategoria" class="form-label">Categoria</label>
+                            <select class="form-select" id="chamadoCategoria" name="categoria" required>
+                                <option selected disabled value="">Selecione...</option>
+                                <option value="hardware" @selected(old('categoria') == 'hardware')>Hardware</option>
+                                <option value="software" @selected(old('categoria') == 'software')>Software</option>
+                                <option value="rede" @selected(old('categoria') == 'rede')>Rede</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="chamadoPrioridade" class="form-label">Prioridade</label>
+                            <select class="form-select" id="chamadoPrioridade" name="prioridade" required>
+                                <option selected disabled value="">Selecione...</option>
+                                <option value="baixa" @selected(old('prioridade') == 'baixa')>Baixa</option>
+                                <option value="media" @selected(old('prioridade') == 'media')>Média</option>
+                                <option value="alta" @selected(old('prioridade') == 'alta')>Alta</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div class="mb-3">
                         <label for="chamadoDescricao" class="form-label">Descrição</label>
-                        <textarea class="form-control" id="chamadoDescricao" rows="4" placeholder="Descreva o problema com o máximo de detalhes possível..."></textarea>
+                        <textarea class="form-control" id="chamadoDescricao" name="descricao" rows="4" placeholder="Descreva o problema...">{{ old('descricao') }}</textarea>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" form="formCriarChamado" class="btn btn-brand">Criar Chamado</button>
-            </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-brand">Criar Chamado</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

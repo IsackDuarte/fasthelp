@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - FastHelp</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Todos os Chamados - FastHelp</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -95,9 +96,7 @@
             color: var(--text-primary);
             border-color: var(--border-color) !important;
         }
-        body.dark .card-header {
-            color: var(--text-primary);
-        }
+        body.dark .card-header { color: var(--text-primary); }
         body.dark .table-hover > tbody > tr:hover {
             background-color: rgba(255, 255, 255, 0.075);
             color: var(--text-primary);
@@ -121,25 +120,38 @@
 </head>
 <body>
 
+    {{-- Componente da Sidebar --}}
     <x-side.menu />
-
+    
     <main class="main-content">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h2">Dashboard</h1>
+            <h1 class="h2">Todos os Chamados</h1>
             <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#modalCriarChamado">
                 <i class="bi bi-plus-circle-fill me-2"></i>Novo Chamado
             </button>
         </div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-lg-4 col-md-6"><div class="card"><div class="card-body d-flex align-items-center p-4"><div class="display-4 me-3"><i class="bi bi-journal-check"></i></div><div><h5 class="card-title-custom">Chamados Abertos</h5><p class="card-text-custom mb-0">12</p></div></div></div></div>
-            <div class="col-lg-4 col-md-6"><div class="card"><div class="card-body d-flex align-items-center p-4"><div class="display-4 me-3"><i class="bi bi-hdd-stack"></i></div><div><h5 class="card-title-custom">Ativos Monitorados</h5><p class="card-text-custom mb-0">354</p></div></div></div></div>
-            <div class="col-lg-4 col-md-6"><div class="card"><div class="card-body d-flex align-items-center p-4"><div class="display-4 me-3"><i class="bi bi-people"></i></div><div><h5 class="card-title-custom">Usuários Ativos</h5><p class="card-text-custom mb-0">89</p></div></div></div></div>
-        </div>
-
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Opa!</strong> Algo deu errado com sua última ação:
+                <ul>
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+        
         <div class="card">
             <div class="card-header bg-transparent border-0 py-3">
-                <h5 class="mb-0">Últimos Chamados</h5>
+                <h5 class="mb-0">Histórico de Chamados</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -149,35 +161,68 @@
                                 <th class="ps-4">ID</th>
                                 <th>Assunto</th>
                                 <th>Status</th>
+                                <th>Prioridade</th> 
                                 <th>Usuário</th>
                                 <th class="pe-4">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td class="ps-4 fw-bold">#1024</td>
-                                <td>Computador não liga</td>
-                                <td><span class="badge bg-danger rounded-pill">Urgente</span></td>
-                                <td>Maria Silva</td>
-                                <td class="pe-4"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalVerChamado" data-ticket-id="1024" data-ticket-title="Computador não liga">Ver</button></td>
-                            </tr>
-                            <tr>
-                                <td class="ps-4 fw-bold">#1023</td>
-                                <td>Problema com impressora</td>
-                                <td><span class="badge bg-warning text-dark rounded-pill">Em Andamento</span></td>
-                                <td>João Pereira</td>
-                                <td class="pe-4"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalVerChamado" data-ticket-id="1023" data-ticket-title="Problema com impressora">Ver</button></td>
-                            </tr>
-                            <tr>
-                                <td class="ps-4 fw-bold">#1022</td>
-                                <td>Instalação de software</td>
-                                <td><span class="badge bg-success rounded-pill">Concluído</span></td>
-                                <td>Ana Costa</td>
-                                <td class="pe-4"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalVerChamado" data-ticket-id="1022" data-ticket-title="Instalação de software">Ver</button></td>
-                            </tr>
+                            @forelse ($chamados as $chamado)
+                                <tr>
+                                    <td class="ps-4 fw-bold">#{{ $chamado->id }}</td>
+                                    <td>{{ $chamado->assunto }}</td>
+                                    <td>
+                                        @php
+                                            $statusValue = $chamado->status instanceof \App\Models\ChamadoStatus ? $chamado->status->value : $chamado->status;
+                                        @endphp
+                                        @if ($statusValue == 'concluido')
+                                            <span class="badge bg-success rounded-pill">Concluído</span>
+                                        @elseif ($statusValue == 'em_andamento')
+                                            <span class="badge bg-warning text-dark rounded-pill">Em Andamento</span>
+                                        @else
+                                            <span class="badge bg-danger rounded-pill">{{ ucfirst($statusValue) }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $prioridadeValue = $chamado->prioridade instanceof \App\Models\ChamadoPrioridade ? $chamado->prioridade->value : $chamado->prioridade;
+                                        @endphp
+                                        <span class="text-capitalize">{{ $prioridadeValue }}</span>
+                                    </td>
+                                    <td>{{ $chamado->user->name ?? 'N/A' }}</td>
+                                    <td class="pe-4">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-secondary" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#modalVerChamado"
+                                                data-url="{{ route('chamados.getJsonData', $chamado) }}">
+                                            Ver
+                                        </button>
+                                        <form action="{{ route('chamados.destroy', $chamado->id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    class="btn btn-sm btn-outline-danger" 
+                                                    data-bs-toggle="tooltip" title="Excluir"
+                                                    onclick="return confirm('Tem certeza?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center p-4">Nenhum chamado encontrado.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
+
+                <div class="card-footer d-flex justify-content-center">
+                    {{ $chamados->links() }}
+                </div>
+                
             </div>
         </div>
     </main>
@@ -186,14 +231,43 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header"><h5 class="modal-title" id="modalCriarChamadoLabel">Criar Novo Chamado</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
-                <div class="modal-body">
-                    <form id="formCriarChamado">
-                        <div class="mb-3"><label for="chamadoAssunto" class="form-label">Assunto</label><input type="text" class="form-control" id="chamadoAssunto" placeholder="Ex: Computador não liga" required></div>
-                        <div class="mb-3"><label for="chamadoCategoria" class="form-label">Categoria</label><select class="form-select" id="chamadoCategoria" required><option selected disabled value="">Selecione...</option><option value="hardware">Hardware</option><option value="software">Software</option><option value="rede">Rede</option></select></div>
-                        <div class="mb-3"><label for="chamadoDescricao" class="form-label">Descrição</label><textarea class="form-control" id="chamadoDescricao" rows="4" placeholder="Descreva o problema..."></textarea></div>
-                    </form>
-                </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" form="formCriarChamado" class="btn btn-brand">Criar Chamado</button></div>
+                <form id="formCriarChamado" action="{{ route('chamados.store') }}" method="POST">
+                    @csrf 
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="chamadoAssunto" class="form-label">Assunto</label>
+                            <input type="text" class="form-control" id="chamadoAssunto" name="assunto" placeholder="Ex: Computador não liga" required value="{{ old('assunto') }}">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="chamadoCategoria" class="form-label">Categoria</label>
+                                <select class="form-select" id="chamadoCategoria" name="categoria" required>
+                                    <option selected disabled value="">Selecione...</option>
+                                    <option value="hardware" @selected(old('categoria') == 'hardware')>Hardware</option>
+                                    <option value="software" @selected(old('categoria') == 'software')>Software</option>
+                                    <option value="rede" @selected(old('categoria') == 'rede')>Rede</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="chamadoPrioridade" class="form-label">Prioridade</label>
+                                <select class="form-select" id="chamadoPrioridade" name="prioridade" required>
+                                    <option selected disabled value="">Selecione...</option>
+                                    <option value="baixa" @selected(old('prioridade') == 'baixa')>Baixa</option>
+                                    <option value="media" @selected(old('prioridade') == 'media')>Média</option>
+                                    <option value="alta" @selected(old('prioridade') == 'alta')>Alta</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="chamadoDescricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="chamadoDescricao" name="descricao" rows="4" placeholder="Descreva o problema...">{{ old('descricao') }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-brand">Criar Chamado</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -201,16 +275,20 @@
     <div class="modal fade" id="modalVerChamado" tabindex="-1" aria-labelledby="modalVerChamadoLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title" id="modalVerChamadoLabel"></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalVerChamadoLabel">Carregando...</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
                 <div class="modal-body">
                     <div class="row g-4">
                         <div class="col-lg-8">
-                            <div class="ticket-thread"></div>
+                            <div class="ticket-thread"><div class="text-center p-5"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div></div>
                             <hr class="my-4">
                             <div class="reply-box">
                                 <h5 class="mb-3">Adicionar uma Resposta</h5>
-                                <form id="formResponderChamado">
-                                    <div class="mb-3"><textarea class="form-control" id="chamadoResposta" rows="5" placeholder="Digite sua resposta..."></textarea></div>
+                                <form id="formResponderChamado" method="POST">
+                                    @csrf 
+                                    <div class="mb-3"><textarea class="form-control" id="chamadoResposta" name="mensagem" rows="5" placeholder="Digite sua resposta..." required></textarea></div>
                                     <div class="d-flex justify-content-end"><button type="submit" class="btn btn-brand">Enviar Resposta</button></div>
                                 </form>
                             </div>
@@ -219,9 +297,14 @@
                             <div class="card shadow-none">
                                 <div class="card-header"><h5 class="mb-0">Detalhes do Chamado</h5></div>
                                 <div class="card-body">
-                                    <div class="details-list"></div>
+                                    <div class="details-list">Carregando...</div>
                                     <hr>
-                                    <div class="d-grid gap-2"><button class="btn btn-success"><i class="bi bi-check-circle-fill me-2"></i> Marcar como Resolvido</button></div>
+                                    <form id="formResolverChamado" method="POST" class="d-grid gap-2">
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="hidden" name="status" value="concluido">
+                                        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle-fill me-2"></i> Marcar como Resolvido</button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -231,10 +314,12 @@
         </div>
     </div>
 
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // Seletores de elementos
             const sidebar = document.getElementById('sidebar');
             const toggleButton = document.getElementById('sidebar-toggle');
             const themeToggle = document.getElementById('theme-toggle');
@@ -243,39 +328,141 @@
             // --- 1. LÓGICA DA SIDEBAR E TOOLTIPS ---
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             const tooltipInstances = tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
-            function handleTooltips() { if (!sidebar) return; const isExpanded = sidebar.classList.contains('expanded'); const toggleButtonTooltip = bootstrap.Tooltip.getInstance(toggleButton); tooltipInstances.forEach(tooltip => { if (tooltip._element.id !== 'sidebar-toggle') { isExpanded ? tooltip.disable() : tooltip.enable(); } }); if (toggleButtonTooltip) { toggleButton.setAttribute('data-bs-original-title', isExpanded ? 'Recolher' : 'Expandir'); toggleButtonTooltip.update(); } }
-            if (toggleButton) { toggleButton.addEventListener('click', () => { sidebar.classList.toggle('expanded'); setTimeout(handleTooltips, 150); localStorage.setItem('sidebarState', sidebar.classList.contains('expanded') ? 'expanded' : 'collapsed'); }); }
-            function applySidebarState() { if (localStorage.getItem('sidebarState') === 'expanded') { sidebar.classList.add('expanded'); } }
+            
+            function handleTooltips() { 
+                if (!sidebar) return; 
+                const isExpanded = sidebar.classList.contains('expanded'); 
+                const toggleButtonTooltip = bootstrap.Tooltip.getInstance(toggleButton); 
+                tooltipInstances.forEach(tooltip => { 
+                    if (tooltip._element.id !== 'sidebar-toggle') { 
+                        isExpanded ? tooltip.disable() : tooltip.enable(); 
+                    } 
+                }); 
+                if (toggleButtonTooltip) { 
+                    toggleButton.setAttribute('data-bs-original-title', isExpanded ? 'Recolher' : 'Expandir'); 
+                    toggleButtonTooltip.update(); 
+                } 
+            }
+            
+            if (toggleButton) { 
+                toggleButton.addEventListener('click', () => { 
+                    sidebar.classList.toggle('expanded'); 
+                    setTimeout(handleTooltips, 150); 
+                    localStorage.setItem('sidebarState', sidebar.classList.contains('expanded') ? 'expanded' : 'collapsed'); 
+                }); 
+            }
+            
+            function applySidebarState() { 
+                if (localStorage.getItem('sidebarState') === 'expanded') { 
+                    sidebar.classList.add('expanded'); 
+                } 
+            }
 
             // --- 2. LÓGICA DO MODO ESCURO ---
-            if (themeToggle) { const icon = themeToggle.querySelector('i'); const themeText = themeToggle.querySelector('.nav-text'); const applySavedTheme = () => { const savedTheme = localStorage.getItem('theme'); if (savedTheme === 'dark') { body.classList.add('dark'); icon.classList.replace('bi-moon-fill', 'bi-sun-fill'); if (themeText) themeText.textContent = 'Modo Claro'; } else { body.classList.remove('dark'); icon.classList.replace('bi-sun-fill', 'bi-moon-fill'); if (themeText) themeText.textContent = 'Modo Escuro'; } }; themeToggle.addEventListener('click', (e) => { e.preventDefault(); body.classList.toggle('dark'); if (body.classList.contains('dark')) { localStorage.setItem('theme', 'dark'); icon.classList.replace('bi-moon-fill', 'bi-sun-fill'); if (themeText) themeText.textContent = 'Modo Claro'; } else { localStorage.setItem('theme', 'light'); icon.classList.replace('bi-sun-fill', 'bi-moon-fill'); if (themeText) themeText.textContent = 'Modo Escuro'; } }); applySavedTheme(); }
-
-            // --- 3. LÓGICA DO MODAL DE VISUALIZAÇÃO DE CHAMADO ---
+            if (themeToggle) { 
+                const icon = themeToggle.querySelector('i'); 
+                const themeText = themeToggle.querySelector('.nav-text'); 
+                const applySavedTheme = () => { 
+                    const savedTheme = localStorage.getItem('theme'); 
+                    if (savedTheme === 'dark') { 
+                        body.classList.add('dark'); 
+                        icon.classList.replace('bi-moon-fill', 'bi-sun-fill'); 
+                        if (themeText) themeText.textContent = 'Modo Claro'; 
+                    } else { 
+                        body.classList.remove('dark'); 
+                        icon.classList.replace('bi-sun-fill', 'bi-moon-fill'); 
+                        if (themeText) themeText.textContent = 'Modo Escuro'; 
+                    } 
+                }; 
+                themeToggle.addEventListener('click', (e) => { 
+                    e.preventDefault(); 
+                    body.classList.toggle('dark'); 
+                    if (body.classList.contains('dark')) { 
+                        localStorage.setItem('theme', 'dark'); 
+                        icon.classList.replace('bi-moon-fill', 'bi-sun-fill'); 
+                        if (themeText) themeText.textContent = 'Modo Claro'; 
+                    } else { 
+                        localStorage.setItem('theme', 'light'); 
+                        icon.classList.replace('bi-sun-fill', 'bi-moon-fill'); 
+                        if (themeText) themeText.textContent = 'Modo Escuro'; 
+                    } 
+                }); 
+                applySavedTheme(); 
+            }
+            
+            // --- 3. LÓGICA DO MODAL DE VISUALIZAÇÃO DE CHAMADO (AJAX) ---
             const viewTicketModal = document.getElementById('modalVerChamado');
             if (viewTicketModal) {
-                viewTicketModal.addEventListener('show.bs.modal', function (event) {
+                const modalTitle = viewTicketModal.querySelector('.modal-title');
+                const ticketThread = viewTicketModal.querySelector('.ticket-thread');
+                const detailsList = viewTicketModal.querySelector('.details-list');
+                const formResponder = viewTicketModal.querySelector('#formResponderChamado');
+                const formResolver = viewTicketModal.querySelector('#formResolverChamado');
+                const spinner = `<div class="text-center p-5"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Loading...</span></div></div>`;
+
+                viewTicketModal.addEventListener('show.bs.modal', async function (event) {
                     const button = event.relatedTarget;
-                    const ticketId = button.dataset.ticketId;
-                    const ticketTitle = button.dataset.ticketTitle;
+                    const url = button.dataset.url;
 
-                    // SIMULAÇÃO DE DADOS (substituir por uma chamada AJAX real)
-                    const ticketData = { user: ticketId === '1024' ? 'Maria Silva' : (ticketId === '1023' ? 'João Pereira' : 'Ana Costa'), agent: 'João (Suporte)', status: ticketId === '1022' ? 'Concluído' : 'Em Andamento', priority: 'Urgente', category: 'Hardware', conversation: [ { author: 'user', name: ticketId === '1024' ? 'Maria Silva' : (ticketId === '1023' ? 'João Pereira' : 'Ana Costa'), text: `Este é o texto da descrição para o chamado #${ticketId}. Precisamos de ajuda com ${ticketTitle}.` }, { author: 'agent', name: 'João (Suporte)', text: 'Recebemos o seu chamado e já estamos analisando.' } ] };
+                    modalTitle.textContent = 'Carregando...';
+                    ticketThread.innerHTML = spinner;
+                    detailsList.innerHTML = 'Carregando...';
+                    formResponder.action = '#'; 
+                    formResolver.action = '#';
+                    formResolver.style.display = 'none'; 
 
-                    const modalTitle = viewTicketModal.querySelector('.modal-title');
-                    const ticketThread = viewTicketModal.querySelector('.ticket-thread');
-                    const detailsList = viewTicketModal.querySelector('.details-list');
+                    try {
+                        const response = await fetch(url);
+                        if (!response.ok) { throw new Error('Falha ao carregar os dados.'); }
+                        const data = await response.json();
+                        
+                        modalTitle.textContent = `#${data.id} - ${data.assunto}`;
+                        detailsList.innerHTML = `
+                            <div class="details-item"><span>Status</span><strong>${data.status_label}</strong></div>
+                            <div class="details-item"><span>Prioridade</span><strong>${data.prioridade_label}</strong></div>
+                            <div class="details-item"><span>Categoria</span><strong>${data.categoria_label}</strong></div>
+                            <div class="details-item"><span>Solicitante</span><strong>${data.user.name}</strong></div>
+                            <div class="details-item"><span>Responsável</span><strong>${data.agent ? data.agent.name : 'N/A'}</strong></div>
+                        `;
 
-                    modalTitle.textContent = `#${ticketId} - ${ticketTitle}`;
-                    ticketThread.innerHTML = '';
-                    detailsList.innerHTML = '';
+                        ticketThread.innerHTML = ''; 
+                        if(data.respostas.length === 0) {
+                            ticketThread.innerHTML = '<p class="text-center text-muted">Nenhum histórico de conversa encontrado.</p>';
+                        } else {
+                            data.respostas.forEach(post => {
+                                const postClass = post.is_agent ? 'agent-post' : 'user-post';
+                                const postIcon = post.is_agent ? 'bi-headset' : 'bi-person-circle';
+                                ticketThread.innerHTML += `
+                                    <div class="thread-item ${postClass}">
+                                        <div class="post-avatar"><i class="bi ${postIcon}"></i></div>
+                                        <div class="post-content">
+                                            <div class="post-header">
+                                                <strong>${post.user.name}</strong> 
+                                                <span class="text-muted ms-2">${post.created_at_human}</span>
+                                            </div>
+                                            <div class="post-body">
+                                                <p style="white-space: pre-wrap;">${post.mensagem}</p>
+                                            </div>
+                                        </div>
+                                    </div>`;
+                            });
+                        }
 
-                    ticketData.conversation.forEach(post => {
-                        const postClass = post.author === 'user' ? 'user-post' : 'agent-post';
-                        const postIcon = post.author === 'user' ? 'bi-person-circle' : 'bi-headset';
-                        ticketThread.innerHTML += `<div class="thread-item ${postClass}"><div class="post-avatar"><i class="bi ${postIcon}"></i></div><div class="post-content"><div class="post-header"><strong>${post.name}</strong></div><div class="post-body"><p>${post.text}</p></div></div></div>`;
-                    });
+                        formResponder.action = data.urls.responder_url;
+                        formResolver.action = data.urls.resolver_url;
+                        
+                        if (data.status !== 'concluido') {
+                            formResolver.style.display = 'block';
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        modalTitle.textContent = 'Erro';
+                        ticketThread.innerHTML = '<p class="text-danger">Não foi possível carregar os dados do chamado.</p>';
+                    }
+                });
 
-                    detailsList.innerHTML = `<div class="details-item"><span>Status</span><strong>${ticketData.status}</strong></div><div class="details-item"><span>Prioridade</span><strong>${ticketData.priority}</strong></div><div class="details-item"><span>Categoria</span><strong>${ticketData.category}</strong></div><div class="details-item"><span>Responsável</span><strong>${ticketData.agent}</strong></div>`;
+                viewTicketModal.addEventListener('hidden.bs.modal', function() {
+                    formResponder.reset();
                 });
             }
 

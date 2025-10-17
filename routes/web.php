@@ -1,23 +1,25 @@
 <?php
+// ...
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ChamadoController;
 
-use Illuminate\Support\Facades\Route;
+// --- 1. ROTAS DE AUTENTICAÇÃO ---
+// Esta linha CRIA a rota 'login'
+Auth::routes(); 
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// ...
+Route::get('/home', [DashboardController::class, 'index'])->name('home');
 
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
+// --- 2. ROTAS PROTEGIDAS (Exigem Login) ---
+// Este grupo USA a rota 'login'
 
-Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // ... todas as suas rotas de chamados ...
+    Route::get('/chamados', [ChamadoController::class, 'index'])->name('chamados.index');
+    Route::post('/chamados', [ChamadoController::class, 'store'])->name('chamados.store');
+    // ... etc ...
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->name('dashboard');
 
-Route::get('/chamados', function () {
-    return view('chamados');
-})->name('chamados');
+// (Não deve ter o 'require __DIR__.'/auth.php';' aqui se você usou laravel/ui)
