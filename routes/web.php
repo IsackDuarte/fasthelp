@@ -17,3 +17,7 @@ Route::get('/register', function () {
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->name('dashboard');
+
+Route::get('/chamados', function () {
+    return view('chamados');
+})->name('chamados');
